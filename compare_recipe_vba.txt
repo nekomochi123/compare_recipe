@@ -1,0 +1,132 @@
+Option Explicit
+
+Sub compare_recipe_macro()
+    Dim this_sheet As Worksheet
+    Set this_sheet = ThisWorkbook.Worksheets("")
+    Dim init_dir As String       
+    Dim files_name() As Variant     
+    Dim cells_value() As Variant    
+    Dim init_r As Integer           
+    
+    init_dir = this_sheet.Cells(1, 2).Value
+    init_r = 4      
+    files_name() = get_files_name(init_dir)   
+    cells_value() = get_cells_value(init_r, this_sheet)     
+    Call compare_values(files_name, cells_value, init_r, this_sheet)        
+    Call compare_values_extra(files_name, cells_value, init_r, this_sheet)      
+    Cells(2, 1).Value = "update date:" + Str(Now)    
+    MsgBox "Processing completed!"
+    
+End Sub
+ 
+Function get_files_name(ByVal init_dir As String)
+    Dim folder_path As String
+    Dim files_name As String
+    Dim results_elements As Integer
+    Dim results() As Variant
+    Dim i As Integer
+    ReDim results(0)
+    i = 0
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .InitialFileName = init_dir
+        .Show
+        folder_path = .SelectedItems(1)
+    End With
+    files_name = Dir(folder_path & "\*.csv")
+    results(i) = files_name
+    Do While files_name <> ""
+        i = UBound(results)
+        i = i + 1
+        ReDim Preserve results(i)
+        files_name = Dir()
+        results(i) = files_name
+    Loop
+    ReDim Preserve results(UBound(results) - 1)
+    get_files_name = results
+    
+End Function
+
+Function get_cells_value(ByVal init_r, ByVal this_sheet)
+    Dim values_r As Integer
+    Dim cells_blank As Variant
+    Dim cells_value() As Variant
+
+    values_r = 0
+    cells_blank = 0
+    ReDim cells_value(0)
+    Do While True
+        cells_blank = this_sheet.Cells(init_r, 1).Value
+        If IsEmpty(cells_blank) Then
+            ReDim Preserve cells_value(UBound(cells_value) - 1)
+            Exit Do
+        Else
+            cells_value(values_r) = cells_blank
+            values_r = UBound(cells_value)
+            init_r = init_r + 1
+            values_r = values_r + 1
+            ReDim Preserve cells_value(values_r)
+        End If
+    Loop
+    get_cells_value = cells_value
+
+End Function
+
+Function compare_values(ByRef files_name() As Variant, ByRef cells_value As Variant, ByVal init_r As Integer, ByVal this_sheet)
+    Dim r As Variant
+    Dim i As Variant
+    Dim j As Integer
+    Dim write_r As Integer  
+    Dim comp_true() As Variant  
+    j = 0
+    ReDim comp_true(j)
+    write_r = UBound(cells_value) + init_r + 1
+    For r = 0 To UBound(files_name)
+        For i = 0 To UBound(cells_value)
+            If files_name(r) = cells_value(i) Then
+                Exit For
+            ElseIf i = UBound(cells_value) Then
+                this_sheet.Cells(write_r, 1).Value = files_name(r)
+                write_r = write_r + 1
+            End If
+        Next i
+    Next r
+    
+End Function
+
+Function compare_values_extra(ByRef files_name() As Variant, ByRef cells_value As Variant, ByVal init_r As Integer, ByVal this_sheet)
+    Dim i As Integer
+    Dim j As Integer
+    Dim r As Integer
+    Dim k As Integer
+    Dim l As Integer
+    Dim cells_read As Variant
+    Dim highlight_comp As Variant
+    r = 0
+    k = 0
+    ReDim highlight_comp(0)
+    For i = 0 To UBound(cells_value)
+        For j = 0 To UBound(files_name)
+            If cells_value(i) = files_name(j) Then
+                Exit For
+            ElseIf j = UBound(files_name) Then
+                highlight_comp(r) = cells_value(i)
+                r = r + 1
+                ReDim Preserve highlight_comp(r)
+            End If
+        Next j
+    Next i
+    If UBound(highlight_comp) <= 0 Then
+        Exit Function
+    End If
+    ReDim Preserve highlight_comp(r - 1)
+    For k = 0 To UBound(highlight_comp)
+        For l = init_r To UBound(cells_value) + init_r
+            cells_read = this_sheet.Cells(l, 1).Value
+            If highlight_comp(k) = cells_read Then
+                this_sheet.Cells(l, 1).Interior.Color = RGB(255, 0, 0)
+            End If
+        Next l
+    Next k
+    
+End Function
+
