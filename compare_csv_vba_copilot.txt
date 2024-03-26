@@ -1,0 +1,121 @@
+Option Explicit
+
+Sub CompareRecipeMacro()
+    Dim thisSheet As Worksheet
+    Set thisSheet = ThisWorkbook.Worksheets("")
+    Dim initDir As String       
+    Dim fileNames() As Variant     
+    Dim cellValues() As Variant    
+    Dim initRow As Integer           
+    
+    initDir = thisSheet.Cells(1, 2).Value
+    initRow = 4      
+    fileNames() = GetFileNames(initDir)   
+    cellValues() = GetCellValues(initRow, thisSheet)     
+    CompareValues fileNames, cellValues, initRow, thisSheet        
+    CompareValuesExtra fileNames, cellValues, initRow, thisSheet      
+    Cells(2, 1).Value = "update date:" + Str(Now)    
+    MsgBox "Processing completed!"
+End Sub
+ 
+Function GetFileNames(ByVal initDir As String) As Variant
+    Dim folderPath As String
+    Dim fileName As String
+    Dim results() As Variant
+    Dim i As Integer
+    ReDim results(0)
+    i = 0
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .InitialFileName = initDir
+        .Show
+        folderPath = .SelectedItems(1)
+    End With
+    fileName = Dir(folderPath & "\*.csv")
+    results(i) = fileName
+    Do While fileName <> ""
+        i = UBound(results)
+        i = i + 1
+        ReDim Preserve results(i)
+        fileName = Dir()
+        results(i) = fileName
+    Loop
+    ReDim Preserve results(UBound(results) - 1)
+    GetFileNames = results
+End Function
+
+Function GetCellValues(ByVal initRow As Integer, ByVal thisSheet As Worksheet) As Variant
+    Dim valuesRow As Integer
+    Dim cellBlank As Variant
+    Dim cellValues() As Variant
+
+    valuesRow = 0
+    cellBlank = 0
+    ReDim cellValues(0)
+    Do While True
+        cellBlank = thisSheet.Cells(initRow, 1).Value
+        If IsEmpty(cellBlank) Then
+            ReDim Preserve cellValues(UBound(cellValues) - 1)
+            Exit Do
+        Else
+            cellValues(valuesRow) = cellBlank
+            valuesRow = UBound(cellValues)
+            initRow = initRow + 1
+            valuesRow = valuesRow + 1
+            ReDim Preserve cellValues(valuesRow)
+        End If
+    Loop
+    GetCellValues = cellValues
+End Function
+
+Function CompareValues(ByRef fileNames() As Variant, ByRef cellValues As Variant, ByVal initRow As Integer, ByVal thisSheet As Worksheet)
+    Dim r As Variant
+    Dim i As Variant
+    Dim writeRow As Integer  
+    writeRow = UBound(cellValues) + initRow + 1
+    For r = 0 To UBound(fileNames)
+        For i = 0 To UBound(cellValues)
+            If fileNames(r) = cellValues(i) Then
+                Exit For
+            ElseIf i = UBound(cellValues) Then
+                thisSheet.Cells(writeRow, 1).Value = fileNames(r)
+                writeRow = writeRow + 1
+            End If
+        Next i
+    Next r
+End Function
+
+Function CompareValuesExtra(ByRef fileNames() As Variant, ByRef cellValues As Variant, ByVal initRow As Integer, ByVal thisSheet As Worksheet)
+    Dim i As Integer
+    Dim j As Integer
+    Dim r As Integer
+    Dim k As Integer
+    Dim l As Integer
+    Dim cellRead As Variant
+    Dim highlightComp() As Variant
+    r = 0
+    k = 0
+    ReDim highlightComp(0)
+    For i = 0 To UBound(cellValues)
+        For j = 0 To UBound(fileNames)
+            If cellValues(i) = fileNames(j) Then
+                Exit For
+            ElseIf j = UBound(fileNames) Then
+                highlightComp(r) = cellValues(i)
+                r = r + 1
+                ReDim Preserve highlightComp(r)
+            End If
+        Next j
+    Next i
+    If UBound(highlightComp) <= 0 Then
+        Exit Function
+    End If
+    ReDim Preserve highlightComp(r - 1)
+    For k = 0 To UBound(highlightComp)
+        For l = initRow To UBound(cellValues) + initRow
+            cellRead = thisSheet.Cells(l, 1).Value
+            If highlightComp(k) = cellRead Then
+                thisSheet.Cells(l, 1).Interior.Color = RGB(255, 0, 0)
+            End If
+        Next l
+    Next k
+End Function
